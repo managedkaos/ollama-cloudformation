@@ -59,19 +59,6 @@ Resources:
             - install_apps
         install_cfn:
           files:
-            /etc/systemd/system/ci.service:
-              content: |
-                [Unit]
-                Description=ci
-                [Service]
-                ExecStart=/usr/bin/docker start jenkins
-                Restart=on-failure
-                [Install]
-                WantedBy=multi-user.target
-              mode: '000400'
-              owner: root
-              group: root
-
             /etc/cfn/cfn-hup.conf:
               content: !Sub |
                 [main]
@@ -116,7 +103,7 @@ Resources:
 
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: "{{resolve:ssm:/aws/service/canonical/ubuntu/server/jammy/stable/current/amd64/hvm/ebs-gp2/ami-id}}"
+      ImageId: "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
       IamInstanceProfile: !Ref Profile
       SecurityGroups:
         - !Ref SecurityGroup
@@ -137,25 +124,6 @@ Resources:
               --region ${AWS::Region} \
               --resource Server \
               --configsets application_installation
-
-            docker volume create jenkins_home &&
-
-            docker run --detach \
-              --name jenkins \
-              --volume jenkins_home:/var/jenkins_home \
-              --publish 80:8080 \
-              jenkins/jenkins:lts
-
-            systemctl daemon-reload
-            systemctl enable ci.service
-
-            # https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
-            docker exec --user=root jenkins apt update -y
-            docker exec --user=root jenkins apt install -y zip python3 python3-venv python3-pip
-            docker exec --user=root jenkins curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            docker exec --user=root jenkins unzip awscliv2.zip
-            docker exec --user=root jenkins ./aws/install
-            docker exec --user=root jenkins python3 --version && pip3 --version && aws --version
 
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \
