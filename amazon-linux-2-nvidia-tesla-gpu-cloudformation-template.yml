@@ -59,12 +59,12 @@ Resources:
             - install_apps
         install_cfn:
           files:
-            /etc/systemd/system/ci.service:
+            /etc/systemd/system/open-webui.service:
               content: |
                 [Unit]
-                Description=ci
+                Description=Open Web UI
                 [Service]
-                ExecStart=/usr/bin/docker start jenkins
+                ExecStart=/usr/bin/docker start open-webui
                 Restart=on-failure
                 [Install]
                 WantedBy=multi-user.target
@@ -116,7 +116,7 @@ Resources:
 
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: "{{resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id}}"
+      ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
       IamInstanceProfile: !Ref Profile
       SecurityGroups:
         - !Ref SecurityGroup
@@ -146,18 +146,20 @@ Resources:
               --resource Server \
               --configsets application_installation
 
-            #curl -fsSL https://ollama.com/install.sh | sh
+            curl -fsSL https://ollama.com/install.sh | sh
 
-            docker volume create jenkins_home
+            docker volume create open-webui
 
             docker run --detach \
-              --name jenkins \
-              --volume jenkins_home:/var/jenkins_home \
               --publish 80:8080 \
-              jenkins/jenkins:lts
+              --add-host=host.docker.internal:host-gateway \
+              --volume open-webui:/app/backend/data \
+              --name open-webui \
+              --restart always \
+              ghcr.io/open-webui/open-webui:main
 
             systemctl daemon-reload
-            systemctl enable ci.service
+            systemctl enable open-webui
 
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \

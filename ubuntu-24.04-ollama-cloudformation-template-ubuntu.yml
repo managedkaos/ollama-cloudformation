@@ -106,7 +106,7 @@ Resources:
 
         install_apps:
           packages:
-            yum:
+            apt:
               docker: []
           services:
             sysvinit:
@@ -116,7 +116,7 @@ Resources:
 
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+      ImageId: "{{resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id}}"
       IamInstanceProfile: !Ref Profile
       SecurityGroups:
         - !Ref SecurityGroup
@@ -138,7 +138,7 @@ Resources:
             #!/bin/bash -xe
             exec > >(tee /var/log/user-data.log) 2>&1
 
-            yum update -y aws-cfn-bootstrap
+            apt-get update && apt-get upgrade -y && apt install -y aws-cfn-bootstrap
 
             /opt/aws/bin/cfn-init -v \
               --stack ${AWS::StackName} \
