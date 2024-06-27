@@ -159,6 +159,8 @@ Resources:
 
             systemctl daemon-reload
             systemctl enable open-webui
+            systemctl start ollama
+            systemctl enable ollama
 
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \
