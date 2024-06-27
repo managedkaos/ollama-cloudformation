@@ -59,6 +59,19 @@ Resources:
             - install_apps
         install_cfn:
           files:
+            /etc/systemd/system/ci.service:
+              content: |
+                [Unit]
+                Description=ci
+                [Service]
+                ExecStart=/usr/bin/docker start jenkins
+                Restart=on-failure
+                [Install]
+                WantedBy=multi-user.target
+              mode: '000400'
+              owner: root
+              group: root
+
             /etc/cfn/cfn-hup.conf:
               content: !Sub |
                 [main]
@@ -124,6 +137,17 @@ Resources:
               --region ${AWS::Region} \
               --resource Server \
               --configsets application_installation
+
+            docker volume create jenkins_home
+
+            docker run --detach \
+              --name jenkins \
+              --volume jenkins_home:/var/jenkins_home \
+              --publish 80:8080 \
+              jenkins/jenkins:lts
+
+            systemctl daemon-reload
+            systemctl enable ci.service
 
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \
