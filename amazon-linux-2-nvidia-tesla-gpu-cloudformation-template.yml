@@ -146,17 +146,19 @@ Resources:
               --resource Server \
               --configsets application_installation
 
-            curl -fsSL https://ollama.com/install.sh | sh
+            #curl -fsSL https://ollama.com/install.sh | sh
 
             docker volume create open-webui
+            docker volume create ollama
 
             docker run --detach \
+              --gpus all \
               --publish 80:8080 \
-              --add-host=host.docker.internal:host-gateway \
               --volume open-webui:/app/backend/data \
+              --volume ollama:/root/.ollama \
               --name open-webui \
               --restart always \
-              ghcr.io/open-webui/open-webui:main
+              ghcr.io/open-webui/open-webui:ollama
 
             systemctl daemon-reload
             systemctl enable open-webui
