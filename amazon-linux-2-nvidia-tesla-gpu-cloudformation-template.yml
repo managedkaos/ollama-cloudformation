@@ -151,7 +151,6 @@ Resources:
             docker volume create open-webui
 
             docker run --detach \
-              --gpus all \
               --publish 80:8080 \
               --volume open-webui:/app/backend/data \
               --restart always \
