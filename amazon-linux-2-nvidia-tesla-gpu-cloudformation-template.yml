@@ -1,4 +1,4 @@
-Description: An EC2 instance running Ollama and Open Web UI
+Description: An EC2 instance running Ollama and Open Web UI. Because we are awesome.
 
 Parameters:
   InstanceType:
