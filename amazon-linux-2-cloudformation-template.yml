@@ -36,12 +36,12 @@ Resources:
   SecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: Allow TCP traffic on port 80
+      GroupDescription: Allow TCP traffic on port 8080
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8080
+          ToPort: 8080
 
   Server:
     Type: AWS::EC2::Instance
@@ -65,6 +65,7 @@ Resources:
                 Description=Open Web UI
                 [Service]
                 ExecStart=/usr/bin/docker start open-webui
+                Environment="OLLAMA_API_BASE_URL=http://localhost:11434"
                 Restart=on-failure
                 [Install]
                 WantedBy=multi-user.target
@@ -151,8 +152,9 @@ Resources:
             docker volume create open-webui
 
             docker run --detach \
-              --publish 80:8080 \
+              --network="host" \
               --volume open-webui:/app/backend/data \
+              --env OLLAMA_API_BASE_URL=http://localhost:11434 \
               --restart always \
               --name open-webui \
               ghcr.io/open-webui/open-webui:main
@@ -174,5 +176,5 @@ Resources:
 
 Outputs:
   URL:
-    Value: !Sub 'http://${Server.PublicDnsName}/'
+    Value: !Sub 'http://${Server.PublicDnsName}:8080/'
     Description: Application URL
