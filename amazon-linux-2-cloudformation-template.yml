@@ -65,7 +65,7 @@ Resources:
                 Description=Open Web UI
                 [Service]
                 ExecStart=/usr/bin/docker start open-webui
-                Environment="OLLAMA_API_BASE_URL=http://localhost:11434"
+                Environment="OLLAMA_BASE_URL=http://localhost:11434"
                 Restart=on-failure
                 [Install]
                 WantedBy=multi-user.target
@@ -154,7 +154,7 @@ Resources:
             docker run --detach \
               --network="host" \
               --volume open-webui:/app/backend/data \
-              --env OLLAMA_API_BASE_URL=http://localhost:11434 \
+              --env OLLAMA_BASE_URL=http://localhost:11434 \
               --restart always \
               --name open-webui \
               ghcr.io/open-webui/open-webui:main
