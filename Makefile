@@ -1,2 +1,4 @@
+TEMPLATES := $(wildcard *.yml)
+
 lint:
-	cfn-lint ollama-cloudformation-template.yml
+	cfn-lint $(TEMPLATES)

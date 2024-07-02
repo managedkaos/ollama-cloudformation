@@ -1,16 +1,16 @@
-Description: An EC2 instance running Ollama and Open Web UI. Because we are awesome.
+Description: Amazon Linux 2 AMI with AMD Radeon Pro Driver running Ollama and Open Web UI.
 
 Parameters:
   InstanceType:
     Type: String
-    Description: The size and type to use for the EC2 instance
-    Default: g4dn.xlarge
+    Description: The size and type to use for the EC2 instance. Must be AMD Radeon Pro GPU instance type.
+    Default: g4ad.xlarge
     AllowedValues:
-      - g4dn.xlarge
-      - g4dn.2xlarge
-      - g4dn.4xlarge
-      - g4dn.8xlarge
-      - g4dn.16xlarge
+      - g4ad.xlarge
+      - g4ad.2xlarge
+      - g4ad.4xlarge
+      - g4ad.8xlarge
+      - g4ad.16xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
 
 Resources:
@@ -117,7 +117,7 @@ Resources:
 
     Properties:
       InstanceType: !Ref InstanceType
-      ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
+      ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-uae4npbyouvyi/2.0.20240620.0}}"
       IamInstanceProfile: !Ref Profile
       SecurityGroups:
         - !Ref SecurityGroup
