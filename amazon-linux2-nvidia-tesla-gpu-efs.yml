@@ -1,4 +1,4 @@
-Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.
+Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.  Includes An EFS filesystem is to persist the Open Web UI volume.
 
 Parameters:
   InstanceType:
@@ -13,20 +13,21 @@ Parameters:
       - g4dn.16xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
 
-  VPCID:
-    Description: the VPC to use for this deployment
+  VpcID:
+    Description: The VPC to use for this deployment.
     Type: AWS::EC2::VPC::Id
+    ConstraintDescription: Must be a valid VPC.
 
   Subnet0:
-    Description: A subnet; must belong to the selected VPC
+    Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
   Subnet1:
-    Description: A subnet; must belong to the selected VPC
+    Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
   Subnet2:
-    Description: A subnet; must belong to the selected VPC
+    Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
 Resources:
@@ -49,15 +50,68 @@ Resources:
       Path: /
       Roles: [!Ref Role]
 
-  SecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow TCP traffic on port 8080
-      SecurityGroupIngress:
-        - CidrIp: 0.0.0.0/0
-          IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+      VpcId: !Ref VpcID
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic within the VPC
+      VpcId: !Ref VpcID
+
+  FileSystemSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow TCP traffic on port 2049
+      VpcId: !Ref VpcID
+
+  WebSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      CidrIp: 0.0.0.0/0
+      GroupId: !Ref WebSecurityGroup
+
+  FileSystemSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref EC2SecurityGroup
+      GroupId: !Ref FileSystemSecurityGroup
+
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+
+  MountTarget0:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet0
+      SecurityGroups:
+        - !Ref FileSystemSecurityGroup
+
+  MountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet1
+      SecurityGroups:
+        - !Ref FileSystemSecurityGroup
+
+  MountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet2
+      SecurityGroups:
+        - !Ref FileSystemSecurityGroup
 
   Server:
     Type: AWS::EC2::Instance
@@ -124,6 +178,7 @@ Resources:
           packages:
             yum:
               docker: []
+              amazon-efs-utils: []
           services:
             sysvinit:
               docker:
@@ -135,7 +190,8 @@ Resources:
       ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
       IamInstanceProfile: !Ref Profile
       SecurityGroups:
-        - !Ref SecurityGroup
+        - !Ref WebSecurityGroup
+        - !Ref EC2SecurityGroup
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}
@@ -164,11 +220,15 @@ Resources:
 
             curl -fsSL https://ollama.com/install.sh | sh
 
-            docker volume create open-webui
+            docker volume create --driver local \
+              --opt type=nfs \
+              --opt o=addr=${FileSystem}.efs.${AWS::Region}.amazonaws.com,rw,nfsvers=4 \
+              --opt device=:/ \
+              open-webui
 
             docker run --detach \
               --network="host" \
-              --volume open-webui:/app/backend/data \
+              --mount source=open-webui,target=/app/backend/data \
               --env OLLAMA_BASE_URL=http://localhost:11434 \
               --restart always \
               --name open-webui \
@@ -178,6 +238,17 @@ Resources:
             systemctl enable open-webui
             systemctl start ollama
             systemctl enable ollama
+
+            mkdir /mnt/open-webui
+            
+            echo -e "$(date)\n\nIf you are seeing this message, you are viewing the local disk, not EFS.\n\n" > \
+              /mnt/mmx/this-is-the-local-disk-not-the-efs-disk.txt
+            
+            cp -v /etc/fstab "/root/fstab.$(date +%F-%s).txt"
+            
+            echo "${FileSystem} /mnt/open-webui efs _netdev,tls 0 0" >> /etc/fstab
+
+            mount -a
 
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \
