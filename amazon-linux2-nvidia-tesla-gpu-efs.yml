@@ -71,23 +71,27 @@ Resources:
   WebSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
+      GroupId: !Ref WebSecurityGroup
       IpProtocol: tcp
       FromPort: 8080
       ToPort: 8080
       CidrIp: 0.0.0.0/0
-      GroupId: !Ref WebSecurityGroup
 
   FileSystemSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
+      GroupId: !Ref FileSystemSecurityGroup
       IpProtocol: tcp
       FromPort: 2049
       ToPort: 2049
       SourceSecurityGroupId: !Ref EC2SecurityGroup
-      GroupId: !Ref FileSystemSecurityGroup
 
   FileSystem:
     Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
 
   MountTarget0:
     Type: AWS::EFS::MountTarget
@@ -189,7 +193,7 @@ Resources:
       InstanceType: !Ref InstanceType
       ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
       IamInstanceProfile: !Ref Profile
-      SecurityGroups:
+      SecurityGroupIds:
         - !Ref WebSecurityGroup
         - !Ref EC2SecurityGroup
       Tags:
@@ -242,7 +246,7 @@ Resources:
             mkdir /mnt/open-webui
             
             echo -e "$(date)\n\nIf you are seeing this message, you are viewing the local disk, not EFS.\n\n" > \
-              /mnt/mmx/this-is-the-local-disk-not-the-efs-disk.txt
+              /mnt/open-webui/this-is-the-local-disk-not-the-efs-disk.txt
             
             cp -v /etc/fstab "/root/fstab.$(date +%F-%s).txt"
             
@@ -264,3 +268,8 @@ Outputs:
   URL:
     Value: !Sub 'http://${Server.PublicDnsName}:8080/'
     Description: Application URL
+
+  InstanceConnection:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${Server}"
+    Description: Server connection URL
+
