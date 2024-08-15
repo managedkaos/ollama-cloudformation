@@ -46,7 +46,6 @@ Resources:
   Server:
     Type: AWS::EC2::Instance
 
-
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M
