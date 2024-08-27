@@ -277,6 +277,13 @@ Resources:
             systemctl start ollama
             systemctl enable ollama
 
+            /opt/aws/bin/cfn-signal -e $? \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource OllamaServer0
+
+            ollama pull llama3.1
+            
             mkdir /mnt/open-webui
             
             echo -e "$(date)\n\nIf you are seeing this message, you are viewing the local disk, not EFS.\n\n" > \
@@ -287,11 +294,7 @@ Resources:
             echo "${FileSystem} /mnt/open-webui efs _netdev,tls 0 0" >> /etc/fstab
 
             mount -a
-
-            /opt/aws/bin/cfn-signal -e $? \
-              --stack ${AWS::StackName} \
-              --region ${AWS::Region} \
-              --resource OllamaServer0
+            
 
 
   ElasticIP:

@@ -280,6 +280,8 @@ Resources:
               --region ${AWS::Region} \
               --resource OllamaServer0
 
+            ollama pull llama3.1
+
 
   OllamaServer1:
     Type: AWS::EC2::Instance
@@ -381,6 +383,8 @@ Resources:
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
               --resource OllamaServer1
+
+            ollama pull llama3.1
 
 
   UiServer:

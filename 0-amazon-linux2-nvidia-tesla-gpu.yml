@@ -176,6 +176,8 @@ Resources:
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
               --resource OllamaServer0
+            
+            ollama pull llama3.1
 
 
   ElasticIP:
