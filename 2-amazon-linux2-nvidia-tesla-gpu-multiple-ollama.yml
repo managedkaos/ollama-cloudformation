@@ -1,18 +1,20 @@
 Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.  Includes An EFS filesystem to persist the Open Web UI volume.
 
+
 Parameters:
   UiInstanceType:
     Type: String
     Description: The size and type to use for the EC2 instance running Open-WebUI.
-    Default: m7g.large
-    AllowedValues:
-      - t4g.large
-      - t4g.xlarge
-      - t4g.2xlarge
-      - m7g.large
-      - m7g.xlarge
-      - m7g.2xlarge
+    Default: m7a.large
+    AllowedValues:  
+      - t4a.large
+      - t4a.xlarge
+      - t4a.2xlarge
+      - m7a.large
+      - m7a.xlarge
+      - m7a.2xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
+
 
   OllamaInstanceType:
     Type: String
@@ -26,20 +28,29 @@ Parameters:
       - g4dn.16xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
 
+
   VpcID:
     Description: The VPC to use for this deployment.
     Type: AWS::EC2::VPC::Id
     ConstraintDescription: Must be a valid VPC.
 
+
   Subnet0:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
+
 
   Subnet1:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
+
   Subnet2:
+    Description: A subnet; must belong to the selected VPC.
+    Type: AWS::EC2::Subnet::Id
+
+  
+  Subnet3:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
@@ -57,11 +68,13 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
 
+
   Profile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
       Roles: [!Ref Role]
+
 
   UiSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -69,11 +82,13 @@ Resources:
       GroupDescription: Allow TCP traffic on port 8080
       VpcId: !Ref VpcID
 
+
   OllamaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow TCP traffic on port 11434
       VpcId: !Ref VpcID
+
 
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -81,11 +96,13 @@ Resources:
       GroupDescription: Allow traffic within the VPC
       VpcId: !Ref VpcID
 
+
   FileSystemSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow TCP traffic on port 2049
       VpcId: !Ref VpcID
+
 
   UiSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
@@ -96,6 +113,7 @@ Resources:
       ToPort: 8080
       CidrIp: 0.0.0.0/0
 
+
   OllammaSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -104,6 +122,7 @@ Resources:
       FromPort: 11434
       ToPort: 11434
       SourceSecurityGroupId: !Ref EC2SecurityGroup
+
 
   FileSystemSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
@@ -114,12 +133,14 @@ Resources:
       ToPort: 2049
       SourceSecurityGroupId: !Ref EC2SecurityGroup
 
+
   FileSystem:
     Type: AWS::EFS::FileSystem
     Properties:
       Encrypted: true
       PerformanceMode: generalPurpose
       ThroughputMode: bursting
+
 
   MountTarget0:
     Type: AWS::EFS::MountTarget
@@ -129,6 +150,7 @@ Resources:
       SecurityGroups:
         - !Ref FileSystemSecurityGroup
 
+
   MountTarget1:
     Type: AWS::EFS::MountTarget
     Properties:
@@ -137,6 +159,7 @@ Resources:
       SecurityGroups:
         - !Ref FileSystemSecurityGroup
 
+
   MountTarget2:
     Type: AWS::EFS::MountTarget
     Properties:
@@ -144,6 +167,16 @@ Resources:
       SubnetId: !Ref Subnet2
       SecurityGroups:
         - !Ref FileSystemSecurityGroup
+
+
+  MountTarget3:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet3
+      SecurityGroups:
+        - !Ref FileSystemSecurityGroup
+
 
   OllamaServer0:
     Type: AWS::EC2::Instance
@@ -156,10 +189,17 @@ Resources:
       'AWS::CloudFormation::Init':
         configSets:
           application_installation:
-            - install_can
-            - install_apps
+            - install_cfn
         install_cfn:
           files:
+            /etc/systemd/system/ollama.service.d/ollama-host.conf:
+              content: |
+                [Service]
+                Environment="OLLAMA_HOST=0.0.0.0"
+              mode: '000400'
+              owner: root
+              group: root
+
             /etc/cfn/cfn-hup.conf:
               content: !Sub |
                 [main]
@@ -198,18 +238,13 @@ Resources:
       ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
 
       IamInstanceProfile: !Ref Profile
-
+      
       SecurityGroupIds:
         - !Ref OllamaSecurityGroup
 
-      NetworkInterfaces:
-        - AssociatePublicIpAddress: false
-          DeviceIndex: '0'
-          SubnetId: !Ref Subnet0
-
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-Ollama-0
+          Value: !Sub ${AWS::StackName}-ollama-0
 
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
@@ -230,7 +265,7 @@ Resources:
             /opt/aws/bin/cfn-init -v \
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
-              --resource Server \
+              --resource OllamaServer0 \
               --configsets application_installation
 
             curl -fsSL https://ollama.com/install.sh | sh
@@ -242,7 +277,109 @@ Resources:
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
-              --resource Server
+              --resource OllamaServer0
+
+
+  OllamaServer1:
+    Type: AWS::EC2::Instance
+
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          application_installation:
+            - install_cfn
+        install_cfn:
+          files:
+            /etc/systemd/system/ollama.service.d/ollama-host.conf:
+              content: |
+                [Service]
+                Environment="OLLAMA_HOST=0.0.0.0"
+              mode: '000400'
+              owner: root
+              group: root
+
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+              mode: '000400'
+              owner: root
+              group: root
+
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.Server.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v
+                      --stack ${AWS::StackName}
+                      --resource Server
+                      --configsets application_installation
+                      --region ${AWS::Region}
+              mode: '000400'
+              owner: root
+              group: root
+
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+
+    Properties:
+      InstanceType: !Ref OllamaInstanceType
+
+      ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
+
+      IamInstanceProfile: !Ref Profile
+      
+      SecurityGroupIds:
+        - !Ref OllamaSecurityGroup
+
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ollama-1
+
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: 500
+            DeleteOnTermination: true
+            Encrypted: false
+
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            exec > >(tee /var/log/user-data.log) 2>&1
+
+            yum update -y aws-cfn-bootstrap
+
+            /opt/aws/bin/cfn-init -v \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource OllamaServer1 \
+              --configsets application_installation
+
+            curl -fsSL https://ollama.com/install.sh | sh
+
+            systemctl daemon-reload
+            systemctl start ollama
+            systemctl enable ollama
+
+            /opt/aws/bin/cfn-signal -e $? \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource OllamaServer1
 
 
   UiServer:
@@ -266,7 +403,7 @@ Resources:
                 Description=Open Web UI
                 [Service]
                 ExecStart=/usr/bin/docker start open-webui
-                Environment="OLLAMA_BASE_URLS=http://${OllamaServer0.PrivateDnsName}:11434"
+                Environment="OLLAMA_BASE_URLS=http://${OllamaServer0.PrivateDnsName}:11434;http://${OllamaServer1.PrivateDnsName}:11434"
                 Restart=on-failure
                 [Install]
                 WantedBy=multi-user.target
@@ -319,14 +456,18 @@ Resources:
 
     Properties:
       InstanceType: !Ref UiInstanceType
-      ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
+      
+      ImageId: "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64}}"
+
       IamInstanceProfile: !Ref Profile
+      
       SecurityGroupIds:
         - !Ref UiSecurityGroup
         - !Ref EC2SecurityGroup
+      
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-Open-WebUI
+          Value: !Sub ${AWS::StackName}-ui
 
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
@@ -347,7 +488,7 @@ Resources:
             /opt/aws/bin/cfn-init -v \
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
-              --resource Server \
+              --resource UiServer \
               --configsets application_installation
 
             docker volume create --driver local \
@@ -359,7 +500,7 @@ Resources:
             docker run --detach \
               --network="host" \
               --mount source=open-webui,target=/app/backend/data \
-              --env OLLAMA_BASE_URLS=http://${OllamaServer0.PrivateDnsName}:11434 \
+              --env OLLAMA_BASE_URLS="http://${OllamaServer0.PrivateDnsName}:11434;http://${OllamaServer1.PrivateDnsName}:11434" \
               --restart always \
               --name open-webui \
               ghcr.io/open-webui/open-webui:main
@@ -381,19 +522,31 @@ Resources:
             /opt/aws/bin/cfn-signal -e $? \
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
-              --resource Server
+              --resource UiServer
+
 
   ElasticIP:
     Type: AWS::EC2::EIP
     Properties:
       InstanceId: !Ref UiServer
 
+
 Outputs:
   URL:
     Value: !Sub 'http://${UiServer.PublicDnsName}:8080/'
-    Description: Application URL
+    Description: Follow this URL to accesss the Open WebUI application
+
 
   UiServerConnection:
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${UiServer}"
-    Description: Server connection URL
+    Description: Follow this URL to connect to the server where Open WebUI is running
 
+
+  OllamaServer0Connection:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${OllamaServer0}"
+    Description: Follow this URL to connect to OllamaServer0
+
+
+  OllamaServer1Connection:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${OllamaServer1}"
+    Description: Follow this URL to connect to OllamaServer1
