@@ -1,4 +1,4 @@
-Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.  Includes An EFS filesystem to persist the Open Web UI volume.
+Description: Two EC2 servers with Nvidia Tesla GPU running Ollama; One EC2 server running Open Web UI managing both Ollama servers.  An EFS filesystem is attached to the Open Web UI server to persist the Open Web UI volume.
 
 
 Parameters:
