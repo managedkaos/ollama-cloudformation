@@ -1,4 +1,4 @@
-Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.  Includes An EFS filesystem is to persist the Open Web UI volume.
+Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.  Includes An EFS filesystem to persist the Open Web UI volume.
 
 Parameters:
   InstanceType:
