@@ -54,6 +54,7 @@ Parameters:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
+
 Resources:
   Role:
     Type: AWS::IAM::Role
@@ -532,21 +533,21 @@ Resources:
 
 
 Outputs:
-  URL:
+  ApplicationUrl:
     Value: !Sub 'http://${UiServer.PublicDnsName}:8080/'
     Description: Follow this URL to accesss the Open WebUI application
 
 
-  UiServerConnection:
+  UiServerUrl:
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${UiServer}"
-    Description: Follow this URL to connect to the server where Open WebUI is running
+    Description: Follow this URL to open a terminal on the server where Open WebUI is running
 
 
-  OllamaServer0Connection:
+  OllamaServer0Url:
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${OllamaServer0}"
-    Description: Follow this URL to connect to OllamaServer0
+    Description: Follow this URL to open a terminal on the server where Ollama is running
 
 
-  OllamaServer1Connection:
+  OllamaServer1Url:
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${OllamaServer1}"
-    Description: Follow this URL to connect to OllamaServer1
+    Description: Follow this URL to open a terminal on the server where Ollama is running

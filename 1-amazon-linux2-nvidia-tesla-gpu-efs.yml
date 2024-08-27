@@ -1,5 +1,6 @@
 Description: Amazon Linux 2 AMI with NVIDIA TESLA GPU Driver running Ollama and Open Web UI.  Includes An EFS filesystem to persist the Open Web UI volume.
 
+
 Parameters:
   InstanceType:
     Type: String
@@ -13,22 +14,31 @@ Parameters:
       - g4dn.16xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
 
-  VpcID:
+
+  VpcId:
     Description: The VPC to use for this deployment.
     Type: AWS::EC2::VPC::Id
     ConstraintDescription: Must be a valid VPC.
+
 
   Subnet0:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
+
   Subnet1:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
 
+
   Subnet2:
     Description: A subnet; must belong to the selected VPC.
     Type: AWS::EC2::Subnet::Id
+
+  Subnet3:
+      Description: A subnet; must belong to the selected VPC.
+      Type: AWS::EC2::Subnet::Id
+
 
 Resources:
   Role:
@@ -44,29 +54,34 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
 
+
   Profile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
       Roles: [!Ref Role]
 
+
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow TCP traffic on port 8080
-      VpcId: !Ref VpcID
+      VpcId: !Ref VpcId
+
 
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow traffic within the VPC
-      VpcId: !Ref VpcID
+      VpcId: !Ref VpcId
+
 
   FileSystemSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow TCP traffic on port 2049
-      VpcId: !Ref VpcID
+      VpcId: !Ref VpcId
+
 
   WebSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
@@ -77,6 +92,7 @@ Resources:
       ToPort: 8080
       CidrIp: 0.0.0.0/0
 
+
   FileSystemSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -86,12 +102,14 @@ Resources:
       ToPort: 2049
       SourceSecurityGroupId: !Ref EC2SecurityGroup
 
+
   FileSystem:
     Type: AWS::EFS::FileSystem
     Properties:
       Encrypted: true
       PerformanceMode: generalPurpose
       ThroughputMode: bursting
+
 
   MountTarget0:
     Type: AWS::EFS::MountTarget
@@ -101,6 +119,7 @@ Resources:
       SecurityGroups:
         - !Ref FileSystemSecurityGroup
 
+
   MountTarget1:
     Type: AWS::EFS::MountTarget
     Properties:
@@ -109,6 +128,7 @@ Resources:
       SecurityGroups:
         - !Ref FileSystemSecurityGroup
 
+
   MountTarget2:
     Type: AWS::EFS::MountTarget
     Properties:
@@ -116,6 +136,16 @@ Resources:
       SubnetId: !Ref Subnet2
       SecurityGroups:
         - !Ref FileSystemSecurityGroup
+
+
+  MountTarget3:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet3
+      SecurityGroups:
+        - !Ref FileSystemSecurityGroup
+
 
   Server:
     Type: AWS::EC2::Instance
@@ -191,11 +221,15 @@ Resources:
 
     Properties:
       InstanceType: !Ref InstanceType
+
       ImageId: "{{resolve:ssm:/aws/service/marketplace/prod-sv2ifwvpp52d4/2.0.20240620.0}}"
+
       IamInstanceProfile: !Ref Profile
+
       SecurityGroupIds:
         - !Ref WebSecurityGroup
         - !Ref EC2SecurityGroup
+
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}
@@ -259,17 +293,19 @@ Resources:
               --region ${AWS::Region} \
               --resource Server
 
+
   ElasticIP:
     Type: AWS::EC2::EIP
     Properties:
       InstanceId: !Ref Server
 
+
 Outputs:
-  URL:
+  ApplicationUrl:
     Value: !Sub 'http://${Server.PublicDnsName}:8080/'
-    Description: Application URL
+    Description: Follow this URL to accesss the Open WebUI application
 
-  InstanceConnection:
+
+  ServerUrl:
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/ec2/home?region=${AWS::Region}#ConnectToInstance:instanceId=${Server}"
-    Description: Server connection URL
-
+    Description: Follow this URL to open a terminal on the server where Open WebUI is running
