@@ -7,9 +7,6 @@ Parameters:
     Description: The size and type to use for the EC2 instance running Open-WebUI.
     Default: m7a.large
     AllowedValues:  
-      - t4a.large
-      - t4a.xlarge
-      - t4a.2xlarge
       - m7a.large
       - m7a.xlarge
       - m7a.2xlarge
